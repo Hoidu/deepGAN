@@ -26,7 +26,9 @@ matplotlib.use('Agg')
 
 # import project libraries
 from UtilsHandler import UtilsHandler
-from NetworksHandler import Encoder
+from NetworksHandler import EncoderLinear
+from NetworksHandler import EncoderSigmoid
+from NetworksHandler import EncoderReLU
 from NetworksHandler import Decoder
 from NetworksHandler import Discriminator
 from VisualizationHandler import ChartPlots
@@ -46,15 +48,17 @@ parser.add_argument('-exp_timestamp', help='', nargs='?', const=dt.datetime.utcn
 parser.add_argument('-seed', help='', nargs='?', const=1234, default=1234)
 parser.add_argument('-no_epochs', help='', nargs='?', const=201, default=201)
 parser.add_argument('-eval_epochs', help='', nargs='?', const=10, default=10)
+parser.add_argument('-enc_output', help='', nargs='?', const='linear', default='linear')
 parser.add_argument('-eval_latent_epochs', help='', nargs='?', const=500, default=500)
 parser.add_argument('-learning_rate_enc', help='', nargs='?', const=1e-4, default=1e-4)
 parser.add_argument('-learning_rate_dec', help='', nargs='?', const=1e-4, default=1e-4)
-parser.add_argument('-learning_rate_dis', help='', nargs='?', const=5e-3, default=5e-3)
+parser.add_argument('-learning_rate_dis', help='', nargs='?', const=1e-6, default=1e-6)
 parser.add_argument('-mini_batch_size', help='', nargs='?', const=128, default=128)
-parser.add_argument('-no_gauss', help='', nargs='?', const=4, default=4)
+parser.add_argument('-no_gauss', help='', nargs='?', const=2, default=2)
 parser.add_argument('-radi_gauss', help='', nargs='?', const=0.8, default=0.8)
 parser.add_argument('-stdv_gauss', help='', nargs='?', const=0.015, default=0.015)
 parser.add_argument('-eval_batch', help='', nargs='?', const=100, default=100)
+parser.add_argument('-use_anomalies', help='', nargs='?', const='False', default='False')
 parser.add_argument('-use_cuda', help='', nargs='?', const='False', default='False')
 parser.add_argument('-base_dir', help='', nargs='?', const='./01_experiments', default='./01_experiments')
 
@@ -78,7 +82,9 @@ experiment_parameter['no_gauss'] = int(experiment_parameter['no_gauss'])
 experiment_parameter['eval_batch'] = int(experiment_parameter['eval_batch'])
 
 # parse boolean args as boolean
+#experiment_parameter['enc_linear'] = uha.str2bool(experiment_parameter['enc_linear'])
 experiment_parameter['use_cuda'] = uha.str2bool(experiment_parameter['use_cuda'])
+experiment_parameter['use_anomalies'] = uha.str2bool(experiment_parameter['use_anomalies'])
 
 # init deterministic seeds
 seed_value = 1234
@@ -96,7 +102,7 @@ d_hidden = [256, 64, 16]
 d_output = 1
 
 # create the experiment directory
-experiment_parameter['experiment_dir'], par_dir, sta_dir, enc_dir, _, _, _, plt_dir, mod_dir = uha.create_experiment_directory(param=experiment_parameter, parent_dir=experiment_parameter['base_dir'], architecture='gan')
+experiment_parameter['experiment_dir'], par_dir, sta_dir, enc_dir, plt_dir, mod_dir, prd_dir = uha.create_experiment_directory(param=experiment_parameter, parent_dir=experiment_parameter['base_dir'], architecture='gan')
 
 # save experiment parameters
 uha.save_experiment_parameter(param=experiment_parameter, parameter_dir=par_dir)
@@ -113,6 +119,12 @@ data_dir = './00_datasets/fraud_dataset_v2.csv'
 
 # read the transactional data
 transactions = pd.read_csv(data_dir, sep=',', encoding='utf-8')
+
+# case: anomalies disabled
+if experiment_parameter['use_anomalies'] is False:
+
+    # remove anomalies, keep regular transactions only
+    transactions = transactions[transactions['label'] == 'regular']
 
 # remove the label column of the transactional data
 y = transactions.pop('label')
@@ -272,7 +284,8 @@ z_stdv = experiment_parameter['stdv_gauss']
 z_target = get_target_distribution(mu=z_mean, sigma=z_stdv, n=transactions.shape[0], dim=2)
 
 # visualize target distribution
-vha.visualize_z_space(z_representation=z_target, filename='00_latent_space_target.png', color='C0')
+title = 'Target Latent Space Distribtion $Z$'
+vha.visualize_z_space(z_representation=z_target, title=title, filename='00_latent_space_target.png', color='C0')
 
 # convert target distribution to torch tensor
 z_target = torch.FloatTensor(z_target)
@@ -287,8 +300,21 @@ if experiment_parameter['use_cuda'] is True:
 # init adversarial autoencoder architecture and loss functions
 ########################################################################################################################
 
-# init encoder model
-encoder = Encoder.Encoder(input_size=enc_transactions.shape[1], hidden_size=encoder_hidden)
+# case: linear encoder enabled
+if experiment_parameter['enc_output'] == 'linear':
+
+    # init encoder model
+    encoder = EncoderLinear.Encoder(input_size=enc_transactions.shape[1], hidden_size=encoder_hidden)
+
+elif experiment_parameter['enc_output'] == 'sigmoid':
+
+    # init encoder model
+    encoder = EncoderSigmoid.Encoder(input_size=enc_transactions.shape[1], hidden_size=encoder_hidden)
+
+elif experiment_parameter['enc_output'] == 'relu':
+
+    # init encoder model
+    encoder = EncoderReLU.Encoder(input_size=enc_transactions.shape[1], hidden_size=encoder_hidden)
 
 # init encoder optimizer
 encoder_optimizer = optim.Adam(encoder.parameters(), lr=experiment_parameter['learning_rate_enc'])
@@ -374,6 +400,10 @@ for epoch in range(experiment_parameter['no_epochs']):
 
         ###### 1. conduct autoencoder training
 
+        # set network in training mode
+        encoder.train()
+        decoder.train()
+
         # reset encoder and decoder gradients
         encoder_optimizer.zero_grad()
         decoder_optimizer.zero_grad()
@@ -402,6 +432,9 @@ for epoch in range(experiment_parameter['no_epochs']):
 
         ###### 2. conduct discriminator training
 
+        # set network in training mode
+        discriminator.train()
+
         # reset discriminator gradients
         discriminator.zero_grad()
 
@@ -421,28 +454,28 @@ for epoch in range(experiment_parameter['no_epochs']):
 
         # determine discriminator error
         # the target distribution should look like ones, target = 1
-        d_fake_error = criterion(d_fake_decision, d_fake_target) #.cuda())
+        d_fake_error = criterion(input=d_fake_decision, target=d_fake_target) #.cuda())
 
         #  2b. forward pass on real transactional mb data (non-sampled)
 
         # encode real mini-batch data to derive latent representation z
-        z_real_batch = encoder(batch).detach()
+        z_real_batch = encoder(batch)
 
         # determine discriminator decision
         d_real_decision = discriminator(z_real_batch)
 
         # determine discriminator target
-        d_real_target = torch.FloatTensor(torch.zeros(d_real_decision.shape))
+        d_real_target_zeros = torch.FloatTensor(torch.zeros(d_real_decision.shape))
 
         # case: GPU computing enabled
         if experiment_parameter['use_cuda'] is True:
 
             # push data to cuda
-            d_real_target = d_real_target.cuda()
+            d_real_target_zeros = d_real_target_zeros.cuda()
 
         # determine discriminator error
         # the real distribution should look like zeros, real = 0
-        d_real_error = criterion(d_fake_decision, d_real_target) #.cuda())  # zeros = fake
+        d_real_error = criterion(input=d_real_decision, target=d_real_target_zeros) #.cuda())  # zeros = fake
 
         # combine both decision errors
         d_error = d_fake_error + d_real_error
@@ -457,30 +490,34 @@ for epoch in range(experiment_parameter['no_epochs']):
 
         # 3. Train encoder on D's response (but DO NOT train D on these labels)
 
+        # set network in training mode
+        encoder.train()
+        discriminator.train()
+
         # reset encoder gradients
         encoder.zero_grad()
 
         # reset discriminator gradients
-        discriminator.zero_grad()
+        #discriminator.zero_grad()
 
         # encode real mini-batch data to derive latent representation z
-        z_real_batch = encoder(batch).detach()
+        z_real_batch = encoder(batch)
 
         # determine discriminator decision
         d_real_decision = discriminator(z_real_batch)
 
         # determine discriminator target
-        d_real_target = torch.FloatTensor(torch.ones(d_real_decision.shape))
+        d_real_target_ones = torch.FloatTensor(torch.ones(d_real_decision.shape))
 
         # case: GPU computing enabled
         if experiment_parameter['use_cuda'] is True:
 
             # push data to cuda
-            d_real_target = d_real_target.cuda()
+            d_real_target_ones = d_real_target_ones.cuda()
 
         # determine discriminator error
         # the real distribution should look like ones, real = 1
-        d_real_error_fool = criterion(d_real_decision, d_real_target) #.cuda())  # ones = true: here we try to fool D
+        d_real_error_fool = criterion(input=d_real_decision, target=d_real_target_ones) #.cuda())  # ones = true: here we try to fool D
 
         # run error back-propagation
         d_real_error_fool.backward()
@@ -551,7 +588,8 @@ for epoch in range(experiment_parameter['no_epochs']):
     z_enc_transactions = z_enc_transactions.cpu().data.numpy()
 
     # visualize latent space
-    vha.visualize_z_space(z_representation=z_enc_transactions, filename='01_latent_space_ep_{}_bt_{}'.format(str(epoch).zfill(4), str(i).zfill(4)), color='C1')
+    title = 'Epoch {} Latent Space Distribtion $Z$'.format(str(epoch))
+    vha.visualize_z_space(z_representation=z_enc_transactions, title=title, filename='01_latent_space_ep_{}_bt_{}'.format(str(epoch).zfill(4), str(i).zfill(4)), color='C1')
 
     # convert encodings to pandas data frame
     cols = ['x', 'y']
