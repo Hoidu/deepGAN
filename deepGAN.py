@@ -44,23 +44,23 @@ vha = ChartPlots.ChartPlots(plot_dir='./')
 # init and prepare argument parser
 parser = ap.ArgumentParser()
 
-parser.add_argument('-exp_timestamp', help='', nargs='?', const=dt.datetime.utcnow().strftime('%Y-%m-%d_%H-%M-%S'), default=dt.datetime.utcnow().strftime('%Y-%m-%d_%H-%M-%S'))
-parser.add_argument('-seed', help='', nargs='?', const=1234, default=1234)
-parser.add_argument('-no_epochs', help='', nargs='?', const=201, default=201)
-parser.add_argument('-eval_epochs', help='', nargs='?', const=10, default=10)
-parser.add_argument('-enc_output', help='', nargs='?', const='linear', default='linear')
-parser.add_argument('-eval_latent_epochs', help='', nargs='?', const=500, default=500)
-parser.add_argument('-learning_rate_enc', help='', nargs='?', const=1e-4, default=1e-4)
-parser.add_argument('-learning_rate_dec', help='', nargs='?', const=1e-4, default=1e-4)
-parser.add_argument('-learning_rate_dis', help='', nargs='?', const=1e-6, default=1e-6)
-parser.add_argument('-mini_batch_size', help='', nargs='?', const=128, default=128)
-parser.add_argument('-no_gauss', help='', nargs='?', const=2, default=2)
-parser.add_argument('-radi_gauss', help='', nargs='?', const=0.8, default=0.8)
-parser.add_argument('-stdv_gauss', help='', nargs='?', const=0.015, default=0.015)
-parser.add_argument('-eval_batch', help='', nargs='?', const=100, default=100)
-parser.add_argument('-use_anomalies', help='', nargs='?', const='False', default='False')
-parser.add_argument('-use_cuda', help='', nargs='?', const='False', default='False')
-parser.add_argument('-base_dir', help='', nargs='?', const='./01_experiments', default='./01_experiments')
+parser.add_argument('--exp_timestamp', help='', nargs='?', type=str, default=dt.datetime.utcnow().strftime('%Y-%m-%d_%H-%M-%S'))
+parser.add_argument('--seed', help='', nargs='?', type=int, default=1234)
+parser.add_argument('--no_epochs', help='', nargs='?', type=int, default=201)
+parser.add_argument('--eval_epochs', help='', nargs='?', type=int, default=10)
+parser.add_argument('--enc_output', help='', nargs='?', type=str, default='linear')
+parser.add_argument('--eval_latent_epochs', help='', nargs='?', type=int, default=500)
+parser.add_argument('--learning_rate_enc', help='', nargs='?', type=float, default=1e-4)
+parser.add_argument('--learning_rate_dec', help='', nargs='?', type=float, default=1e-4)
+parser.add_argument('--learning_rate_dis', help='', nargs='?', type=float, default=1e-6)
+parser.add_argument('--mini_batch_size', help='', nargs='?', type=int, default=128)
+parser.add_argument('--no_gauss', help='', nargs='?', type=int, default=2)
+parser.add_argument('--radi_gauss', help='', nargs='?', type=float, default=0.8)
+parser.add_argument('--stdv_gauss', help='', nargs='?', type=float, default=0.015)
+parser.add_argument('--eval_batch', help='', nargs='?', type=int, default=100)
+parser.add_argument('--use_anomalies', help='', nargs='?', type=bool, default=False)
+parser.add_argument('--use_cuda', help='', nargs='?', type=bool, default=False)
+parser.add_argument('--base_dir', help='', nargs='?', type=str, default='./01_experiments')
 
 # parse script arguments
 experiment_parameter = vars(parser.parse_args())
@@ -316,15 +316,22 @@ elif experiment_parameter['enc_output'] == 'relu':
     # init encoder model
     encoder = EncoderReLU.Encoder(input_size=enc_transactions.shape[1], hidden_size=encoder_hidden)
 
+# determine encoder number of parameters
+encoder_parameter = uha.get_network_parameter(net=encoder)
+
 # init encoder optimizer
 encoder_optimizer = optim.Adam(encoder.parameters(), lr=experiment_parameter['learning_rate_enc'])
 
 # log configuration processing
 now = dt.datetime.utcnow().strftime('%Y.%m.%d-%H:%M:%S')
 print('[INFO {}] DeepGAN:: Encoder architecture established: {}.'.format(now, str(encoder)))
+print('[INFO {}] DeepGAN:: No. of Encoder architecture parameters: {}.'.format(now, str(encoder_parameter)))
 
 # init decoder model
 decoder = Decoder.Decoder(hidden_size=decoder_hidden, output_size=enc_transactions.shape[1])
+
+# determine decoder number of parameters
+decoder_parameter = uha.get_network_parameter(net=decoder)
 
 # init decoder optimizer
 decoder_optimizer = optim.Adam(decoder.parameters(), lr=experiment_parameter['learning_rate_dec'])
@@ -332,9 +339,13 @@ decoder_optimizer = optim.Adam(decoder.parameters(), lr=experiment_parameter['le
 # log configuration processing
 now = dt.datetime.utcnow().strftime('%Y.%m.%d-%H:%M:%S')
 print('[INFO {}] DeepGAN:: Decoder architecture established: {}.'.format(now, str(decoder)))
+print('[INFO {}] DeepGAN:: No. of Decoder architecture parameters: {}.'.format(now, str(decoder_parameter)))
 
 # init discriminator model
 discriminator = Discriminator.Discriminator(input_size=d_input, hidden_size=d_hidden, output_size=d_output)
+
+# determine discriminator number of parameters
+discriminator_parameter = uha.get_network_parameter(net=discriminator)
 
 # init discriminator optimizer
 discriminator_optimizer = optim.Adam(discriminator.parameters(), lr=experiment_parameter['learning_rate_dis'])
@@ -342,6 +353,7 @@ discriminator_optimizer = optim.Adam(discriminator.parameters(), lr=experiment_p
 # log configuration processing
 now = dt.datetime.utcnow().strftime('%Y.%m.%d-%H:%M:%S')
 print('[INFO {}] DeepGAN:: Discriminator architecture established: {}.'.format(now, str(discriminator)))
+print('[INFO {}] DeepGAN:: No. of Discriminator architecture parameters: {}.'.format(now, str(discriminator_parameter)))
 
 # case: GPU computing enabled
 if experiment_parameter['use_cuda'] is True:
@@ -357,6 +369,14 @@ reconstruction_criterion_numeric = nn.MSELoss()
 
 # init the discriminator losses
 criterion = nn.BCELoss()
+
+# case: GPU computing enabled
+if experiment_parameter['use_cuda'] is True:
+
+    # push losses to cuda
+    reconstruction_criterion_categorical.cuda()
+    reconstruction_criterion_numeric.cuda()
+    criterion.cuda()
 
 # =================== START TRAINING ============================
 
