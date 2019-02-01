@@ -47,7 +47,7 @@ parser = ap.ArgumentParser()
 parser.add_argument('--exp_timestamp', help='', nargs='?', type=str, default=dt.datetime.utcnow().strftime('%Y-%m-%d_%H-%M-%S'))
 parser.add_argument('--seed', help='', nargs='?', type=int, default=1234)
 parser.add_argument('--no_epochs', help='', nargs='?', type=int, default=201)
-parser.add_argument('--eval_epochs', help='', nargs='?', type=int, default=50)
+parser.add_argument('--eval_epochs', help='', nargs='?', type=int, default=10)
 parser.add_argument('--enc_output', help='', nargs='?', type=str, default='linear')
 parser.add_argument('--eval_latent_epochs', help='', nargs='?', type=int, default=500)
 parser.add_argument('--learning_rate_enc', help='', nargs='?', type=float, default=1e-4)
@@ -601,41 +601,37 @@ for epoch in range(experiment_parameter['no_epochs']):
 
     ##### analyze latent representation
 
-    if epoch % experiment_parameter['eval_epochs'] == 0:
+    # determine latent space representation of all transactions
+    z_enc_transactions = encoder(enc_transactions)
 
-        # determine latent space representation of all transactions
-        z_enc_transactions = encoder(enc_transactions)
+    # convert latent space representation to numpy
+    z_enc_transactions = z_enc_transactions.cpu().data.numpy()
 
-        # convert latent space representation to numpy
-        z_enc_transactions = z_enc_transactions.cpu().data.numpy()
+    # visualize latent space
+    title = 'Epoch {} Latent Space Distribtion $Z$'.format(str(epoch))
+    vha.visualize_z_space(z_representation=z_enc_transactions, title=title, filename='01_latent_space_ep_{}_bt_{}'.format(str(epoch).zfill(4), str(i).zfill(4)), color='C1')
 
-        # visualize latent space
-        title = 'Epoch {} Latent Space Distribtion $Z$'.format(str(epoch))
-        vha.visualize_z_space(z_representation=z_enc_transactions, title=title, filename='01_latent_space_ep_{}_bt_{}'.format(str(epoch).zfill(4), str(i).zfill(4)), color='C1')
+    # convert encodings to pandas data frame
+    cols = ['x', 'y']
+    df_z_enc_transactions = pd.DataFrame(z_enc_transactions, columns=cols)
 
-        # convert encodings to pandas data frame
-        cols = ['x', 'y']
-        df_z_enc_transactions = pd.DataFrame(z_enc_transactions, columns=cols)
-
-        # save encodings data frame to file directory
-        filename = '01_encodings_ep_{}.csv'.format(str(epoch))
-        df_z_enc_transactions.to_csv(os.path.join(enc_dir, filename), sep=';', index=False, encoding='utf-8')
+    # save encodings data frame to file directory
+    filename = '01_encodings_ep_{}.csv'.format(str(epoch))
+    df_z_enc_transactions.to_csv(os.path.join(enc_dir, filename), sep=';', index=False, encoding='utf-8')
 
     ##### save trained models
 
-    if epoch % experiment_parameter['eval_epochs'] == 0:
+    # save trained encoder model file to disk
+    encoder_model_name = "ep_{}_encoder_model.pth".format(str(epoch + 1).zfill(4))
+    torch.save(encoder.state_dict(), os.path.join(mod_dir, encoder_model_name))
 
-        # save trained encoder model file to disk
-        encoder_model_name = 'ep_{}_encoder_model.pkl'.format(str(epoch + 1).zfill(4))
-        torch.save(encoder.state_dict(), os.path.join(mod_dir, encoder_model_name))
+    # save trained decoder model file to disk
+    decoder_model_name = "ep_{}_decoder_model.pth".format(str(epoch + 1).zfill(4))
+    torch.save(decoder.state_dict(), os.path.join(mod_dir, decoder_model_name))
 
-        # save trained decoder model file to disk
-        decoder_model_name = 'ep_{}_decoder_model.pkl'.format(str(epoch + 1).zfill(4))
-        torch.save(decoder.state_dict(), os.path.join(mod_dir, decoder_model_name))
-
-        # save trained discriminator model file to disk
-        discriminator_model_name = 'ep_{}_discriminator_model.pkl'.format(str(epoch + 1).zfill(4))
-        torch.save(discriminator.state_dict(), os.path.join(mod_dir, discriminator_model_name))
+    # save trained discriminator model file to disk
+    discriminator_model_name = "ep_{}_discriminator_model.pth".format(str(epoch + 1).zfill(4))
+    torch.save(discriminator.state_dict(), os.path.join(mod_dir, discriminator_model_name))
 
 '''
     #if epoch % plot_interval == 0:
