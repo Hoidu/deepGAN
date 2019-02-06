@@ -7,11 +7,20 @@ __pycache__/
 00_datasets/
 01_experiments/
 
+# pycharm files and folders
+.idea/
+.DS_Store
+
 # C extensions
 *.so
 
-# xlsx extensions
+# excel and csv extensions
 *.xlsx
+*.xls
+*.csv
+
+# xml extensions
+*.xml
 
 # Distribution / packaging
 .Python
