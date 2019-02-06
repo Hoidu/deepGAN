@@ -46,8 +46,8 @@ parser = ap.ArgumentParser()
 
 parser.add_argument('--exp_timestamp', help='', nargs='?', type=str, default=dt.datetime.utcnow().strftime('%Y-%m-%d_%H-%M-%S'))
 parser.add_argument('--seed', help='', nargs='?', type=int, default=1234)
-parser.add_argument('--no_epochs', help='', nargs='?', type=int, default=201)
-parser.add_argument('--eval_epochs', help='', nargs='?', type=int, default=50)
+parser.add_argument('--no_epochs', help='', nargs='?', type=int, default=5)
+parser.add_argument('--eval_epochs', help='', nargs='?', type=int, default=1)
 parser.add_argument('--enc_output', help='', nargs='?', type=str, default='linear')
 parser.add_argument('--eval_latent_epochs', help='', nargs='?', type=int, default=500)
 parser.add_argument('--learning_rate_enc', help='', nargs='?', type=float, default=1e-4)
@@ -132,9 +132,16 @@ y = transactions.pop('label')
 # copy the transactional data
 x = transactions.copy()
 
+# filter transactions for company codes
+bukrs = ['C10', 'C11', 'C12', 'C13', 'C14', 'C15', 'C16', 'C17']
+transactions_filtered = x[x['BUKRS'].isin(bukrs)]
+
+# reset index of filtered transactions
+transactions_filtered.index = range(0, transactions_filtered.shape[0])
+
 # log configuration processing
 now = dt.datetime.utcnow().strftime('%Y.%m.%d-%H:%M:%S')
-print('[INFO {}] DeepGAN::Data loading, transactional data of shape {} rows and {} columns successfully loaded.'.format(now, str(transactions.shape[0]), str(transactions.shape[1])))
+print('[INFO {}] DeepGAN::Data loading, transactional data of shape {} rows and {} columns successfully loaded.'.format(now, str(transactions_filtered.shape[0]), str(transactions_filtered.shape[1])))
 
 ###### pre-process categorical attributes
 
@@ -142,7 +149,7 @@ print('[INFO {}] DeepGAN::Data loading, transactional data of shape {} rows and 
 cat_attr = ['WAERS', 'BUKRS', 'KTOSL', 'PRCTR',	'BSCHL', 'HKONT']
 
 # extract categorical attributes
-cat_transactions = x[cat_attr].copy()
+cat_transactions = transactions_filtered[cat_attr].copy()
 
 # encode categorical attributs into one-hot
 encoded_cat_transactions = pd.get_dummies(cat_transactions)
@@ -153,7 +160,7 @@ encoded_cat_transactions = pd.get_dummies(cat_transactions)
 numeric_attr = ['DMBTR', 'WRBTR']
 
 # extract the numerical attributes
-num_transactions = x[numeric_attr].copy()
+num_transactions = transactions_filtered[numeric_attr].copy()
 
 # log-transform the numerical attributes
 encoded_num_transactions = (num_transactions + 0.0001).apply(np.log)

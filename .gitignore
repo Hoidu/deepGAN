@@ -6,6 +6,21 @@ __pycache__/
 # C extensions
 *.so
 
+# xls and csv extensions
+*.csv
+*.xls
+*.xlsx
+
+# dataset folder
+00_datasets
+
+# experiment folder
+01_experiments/
+
+# pycharm folder
+.idea/
+.DS_Store
+
 # Distribution / packaging
 .Python
 build/

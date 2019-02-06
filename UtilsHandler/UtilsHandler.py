@@ -131,3 +131,7 @@ class UtilsHandler(object):
 
 			# rais error
 			raise argparse.ArgumentTypeError('[ERROR] Boolean value expected.')
+
+	def get_network_parameter(self, net):
+
+		return 0.00
