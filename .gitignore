@@ -3,8 +3,15 @@ __pycache__/
 *.py[cod]
 *$py.class
 
+# Own files and folders
+00_datasets/
+01_experiments/
+
 # C extensions
 *.so
+
+# xlsx extensions
+*.xlsx
 
 # Distribution / packaging
 .Python
