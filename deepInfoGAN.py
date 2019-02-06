@@ -418,7 +418,9 @@ for epoch in range(experiment_parameter['no_epochs']):
             # push data to cuda
             z_target_batch = z_target_batch.cuda()
 
+        ################################################################################################################
         ###### 1. conduct autoencoder training
+        ################################################################################################################
 
         # set network in training mode
         encoder.train()
@@ -450,7 +452,9 @@ for epoch in range(experiment_parameter['no_epochs']):
         decoder_optimizer.step()
         encoder_optimizer.step()
 
+        ################################################################################################################
         ###### 2. conduct discriminator training
+        ################################################################################################################
 
         # set network in training mode
         discriminator.train()
@@ -506,7 +510,9 @@ for epoch in range(experiment_parameter['no_epochs']):
         # optimize discriminator parameters
         discriminator_optimizer.step()
 
+        ################################################################################################################
         ###### 3. conduct encoder-discriminator training
+        ################################################################################################################
 
         # 3. Train encoder on D's response (but DO NOT train D on these labels)
 

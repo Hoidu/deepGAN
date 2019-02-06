@@ -1,6 +1,7 @@
 # import class libraries
 import os as os
 import json as js
+import datetime as dt
 import glob
 import argparse
 
@@ -77,7 +78,7 @@ class UtilsHandler(object):
 	def save_experiment_parameter(self, param, parameter_dir):
 
 		# create filename
-		filename = str('{}_deepGAN_exp_sd_{}_ep_{}_gs_{}_rd_{}_sd_{}_mb_{}_eco_{}_gpu_{}'.format(str(param['exp_timestamp']), str(param['seed']), str(param['no_epochs']), str(param['no_gauss']), str(param['radi_gauss']), str(param['stdv_gauss']), str(param['mini_batch_size']), str(param['enc_output']), str(param['use_cuda'])))
+		filename = str('{}_deepGAN_exp_sd_{}_ep_{}_gs_{}_rd_{}_sd_{}_mb_{}_eco_{}_gpu_{}.txt'.format(str(param['exp_timestamp']), str(param['seed']), str(param['no_epochs']), str(param['no_gauss']), str(param['radi_gauss']), str(param['stdv_gauss']), str(param['mini_batch_size']), str(param['enc_output']), str(param['use_cuda'])))
 
 		# write experimental config to file
 		with open(os.path.join(parameter_dir, filename), 'w') as outfile:
@@ -104,6 +105,20 @@ class UtilsHandler(object):
 
 		# return experiment parameter
 		return experiment_parameter
+
+	def get_network_parameter(self, net):
+
+		# init number of parameters
+		num_params = 0
+
+		# iterate over net parameters
+		for param in net.parameters():
+
+			# collect number of parameters
+			num_params += param.numel()
+
+		# return number of network parameters
+		return num_params
 
 	def str2bool(self, value):
 
