@@ -6,6 +6,7 @@ __pycache__/
 # Own files and folders
 00_datasets/
 01_experiments/
+zzz/
 
 # pycharm files and folders
 .idea/

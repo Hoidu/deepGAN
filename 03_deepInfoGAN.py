@@ -1,5 +1,5 @@
 # import python libraries
-import os, sys
+import os, itertools
 import argparse as ap
 import datetime as dt
 import time as tm
@@ -45,8 +45,9 @@ vha = ChartPlots.ChartPlots(plot_dir='./')
 parser = ap.ArgumentParser()
 
 parser.add_argument('--exp_timestamp', help='', nargs='?', type=str, default=dt.datetime.utcnow().strftime('%Y-%m-%d_%H-%M-%S'))
+parser.add_argument('--target_feature', help='', nargs='?', type=str, default='BUKRS')
 parser.add_argument('--seed', help='', nargs='?', type=int, default=1234)
-parser.add_argument('--no_epochs', help='', nargs='?', type=int, default=5)
+parser.add_argument('--no_epochs', help='', nargs='?', type=int, default=400)
 parser.add_argument('--eval_epochs', help='', nargs='?', type=int, default=1)
 parser.add_argument('--enc_output', help='', nargs='?', type=str, default='linear')
 parser.add_argument('--eval_latent_epochs', help='', nargs='?', type=int, default=500)
@@ -54,9 +55,9 @@ parser.add_argument('--learning_rate_enc', help='', nargs='?', type=float, defau
 parser.add_argument('--learning_rate_dec', help='', nargs='?', type=float, default=1e-4)
 parser.add_argument('--learning_rate_dis', help='', nargs='?', type=float, default=1e-6)
 parser.add_argument('--mini_batch_size', help='', nargs='?', type=int, default=128)
-parser.add_argument('--no_gauss', help='', nargs='?', type=int, default=2)
+parser.add_argument('--no_gauss', help='', nargs='?', type=int, default=8)
 parser.add_argument('--radi_gauss', help='', nargs='?', type=float, default=0.8)
-parser.add_argument('--stdv_gauss', help='', nargs='?', type=float, default=0.015)
+parser.add_argument('--stdv_gauss', help='', nargs='?', type=float, default=0.03)
 parser.add_argument('--eval_batch', help='', nargs='?', type=int, default=100)
 parser.add_argument('--use_anomalies', help='', nargs='?', type=bool, default=False)
 parser.add_argument('--use_cuda', help='', nargs='?', type=bool, default=False)
@@ -92,12 +93,15 @@ np.random.seed(seed_value) # set numpy seed
 torch.manual_seed(seed_value) # set pytorch seed CPU
 torch.cuda.manual_seed(seed_value) # set pytorch seed GPU
 
+# init latent space dimensionality
+latent_space_dim = experiment_parameter['no_gauss'] + 2
+
 # autoencoder architecture
-encoder_hidden = [256, 64, 16, 2]
-decoder_hidden = [2, 16, 64, 256]
+encoder_hidden = [256, 64, 16, latent_space_dim]
+decoder_hidden = [latent_space_dim, 16, 64, 256]
 
 # discriminator architecture
-d_input = 2
+d_input = latent_space_dim
 d_hidden = [256, 64, 16]
 d_output = 1
 
@@ -146,12 +150,12 @@ print('[INFO {}] DeepGAN::Data loading, transactional data of shape {} rows and 
 ###### pre-process categorical attributes
 
 # determine the categorical attributes
-cat_attr = ['WAERS', 'BUKRS', 'KTOSL', 'PRCTR',	'BSCHL', 'HKONT']
+cat_attr = ['BUKRS', 'WAERS', 'KTOSL', 'PRCTR',	'BSCHL', 'HKONT']
 
 # extract categorical attributes
 cat_transactions = transactions_filtered[cat_attr].copy()
 
-# encode categorical attributs into one-hot
+# encode categorical attributes into one-hot
 encoded_cat_transactions = pd.get_dummies(cat_transactions)
 
 ###### pre-process numerical attributes
@@ -192,82 +196,6 @@ dataloader = DataLoader(dataset=enc_transactions, batch_size=experiment_paramete
 # determine total number of batches
 no_batches = int(enc_transactions.shape[0] / experiment_parameter['mini_batch_size'])
 
-#trY = y.replace({'regular': 1, 'local': 2, 'global': 3}).values
-
-# indices of one-hot encoded attributes
-#dummy_mapping = x_categorical.nunique().cumsum()
-
-# max and min of numeric attributes
-#numeric_mapping_max = x_numeric.max()
-#numeric_mapping_min = x_numeric.min()
-
-# =================== help functions ============================
-# sample Guassian distribution(s) of a particular shape
-def get_target_distribution(mu, sigma, n, dim=2):
-
-	# determine samples per gaussian
-	samples_per_gaussian = int(n / len(mu))
-
-	# determine sample delta
-	samples_delta = n - (len(mu) * samples_per_gaussian)
-
-	# iterate over all gaussians
-	for i, mean in enumerate(mu):
-
-		# case: first gaussian
-		if i == 0:
-
-			# randomly sample from gaussion distribution + samples delta
-			z_samples_all = np.random.normal(mean, sigma, size=(samples_per_gaussian + samples_delta, dim))
-
-		# case: non-first gaussian
-		else:
-
-			# randomly sample from gaussion distribution + samples delta
-			z_samples = np.random.normal(mean, sigma, size=(samples_per_gaussian, dim))
-
-			# stack new samples
-			z_samples_all = np.vstack([z_samples_all, z_samples])
-
-	# return sampled data
-	return z_samples_all
-
-# split matrix: one-hot and numerical parts
-def split_2_dummy_numeric(m, slice_index):
-  dummy_part = m[:, :slice_index]
-  numeric_part = m[:, slice_index:]
-  return dummy_part, numeric_part
-
-# calculate the purity score of a cluster
-def get_purity(cluster_labels, input_data):
-
-  def purity_score(cluster):
-	# given the cluster compute cluster mean
-	cluster_mean = np.mean(cluster, axis=0)
-	# average distance of the cluster points to the cluster mean
-	avg_distance = np.mean(np.sqrt(np.sum((cluster - cluster_mean)**2, axis=1)))
-	# return the distance penalized by the number of cluster points
-	return (avg_distance / np.shape(cluster)[0])
-	#return (avg_distance)# / np.shape(cluster)[0])
-
-  purity = []
-  cluster_points = []
-
-  for cluster_label in range(experiment_parameter['no_gauss']):
-
-	cluster = input_data[cluster_labels==cluster_label]
-	# sometimes clusters might be empty
-
-	if len(cluster) == 0:
-		purity.append(0)
-		cluster_points.append(0)
-
-	else:
-		purity.append(purity_score(cluster))
-		cluster_points.append(len(cluster))
-
-  return purity, cluster_points
-
 ########################################################################################################################
 # create the latent space target data
 ########################################################################################################################
@@ -284,15 +212,41 @@ y_centroid = (radius * np.cos(theta) + 1) / 2
 z_mean = np.vstack([x_centroid, y_centroid]).T
 z_stdv = experiment_parameter['stdv_gauss']
 
-# training params
-#n_samples = int(533000 / experiment_parameter['no_gauss']) * experiment_parameter['no_gauss']
-
 # determine latent space target data
-z_target = get_target_distribution(mu=z_mean, sigma=z_stdv, n=transactions.shape[0], dim=2)
+z_target_discrete, z_target_continous = uha.get_info_target_distribution(mu=z_mean, sigma=z_stdv, n=transactions.shape[0], dim=2)
+
+# concatenate discrete and continous target data
+z_target = np.column_stack((z_target_discrete, z_target_continous))
+
+# visualize target distribution of all gaussians
+
+# convert encodings to pandas data frame
+cols = [str(x) for x in range(experiment_parameter['no_gauss'])]
+cols.extend(['x', 'y'])
+df_z_target = pd.DataFrame(z_target, columns=cols)
 
 # visualize target distribution
-title = 'Target Latent Space Distribtion $Z$'
-vha.visualize_z_space(z_representation=z_target, title=title, filename='00_latent_space_target.png', color='C0')
+title = 'Gaussian All Target Latent Space Distribution $Z$'
+file_name = '00_latent_space_target_gauss_all.png'
+vha.visualize_z_space(z_representation=df_z_target, title=title, filename=file_name, color='C0')
+
+# visualize target distribution of individual gaussians
+
+# iterate number of gaussians
+for i in range(0, experiment_parameter['no_gauss']):
+
+	# filter for current discrete value
+	z_target_selection = z_target[z_target[:, i] == 1.0]
+
+	# convert encodings to pandas data frame
+	cols = [str(x) for x in range(experiment_parameter['no_gauss'])]
+	cols.extend(['x', 'y'])
+	df_z_target_selection = pd.DataFrame(z_target_selection, columns=cols)
+
+	# visualize target distribution
+	title = 'Gaussian {} Target Latent Space Distribution $Z$'.format(str(i))
+	file_name = '00_latent_space_target_gauss_{}.png'.format(str(i).zfill(2))
+	vha.visualize_z_space(z_representation=df_z_target_selection, title=title, filename=file_name, color='C0')
 
 # convert target distribution to torch tensor
 z_target = torch.FloatTensor(z_target)
@@ -328,6 +282,9 @@ encoder_parameter = uha.get_network_parameter(net=encoder)
 
 # init encoder optimizer
 encoder_optimizer = optim.Adam(encoder.parameters(), lr=experiment_parameter['learning_rate_enc'])
+
+# init encoder discriminator optimizer
+encoder_categorical_optimizer = optim.Adam(encoder.parameters(), lr=experiment_parameter['learning_rate_dis'])
 
 # log configuration processing
 now = dt.datetime.utcnow().strftime('%Y.%m.%d-%H:%M:%S')
@@ -375,15 +332,19 @@ reconstruction_criterion_categorical = nn.BCELoss()
 reconstruction_criterion_numeric = nn.MSELoss()
 
 # init the discriminator losses
-criterion = nn.BCELoss()
+discriminator_criterion_categorical = nn.BCELoss()
+discriminator_criterion_numeric = nn.MSELoss()
 
 # case: GPU computing enabled
 if experiment_parameter['use_cuda'] is True:
 
-	# push losses to cuda
+	# push reconstruction losses to cuda
 	reconstruction_criterion_categorical.cuda()
 	reconstruction_criterion_numeric.cuda()
-	criterion.cuda()
+
+	# push discriminator losses to cuda
+	discriminator_criterion_categorical.cuda()
+	discriminator_criterion_numeric.cuda()
 
 # =================== START TRAINING ============================
 
@@ -397,15 +358,6 @@ for epoch in range(experiment_parameter['no_epochs']):
 	now = dt.datetime.utcnow().strftime('%Y.%m.%d-%H:%M:%S')
 	print('[INFO {}] DeepGAN:: Start model training of epoch: {}.'.format(now, str(epoch)))
 
-	# case: evaluation epoch
-	#if epoch % experiment_parameter['eval_latent_epochs'] == 0:
-
-		# define variables for collecting scores
-		#z_space_all_epochs = np.zeros(shape=(experiment_parameter['eval_latent_epochs'], np.shape(trX)[0], 2), dtype='float16')
-		#cluster_labels_all_epochs = np.zeros(shape=(experiment_parameter['eval_latent_epochs'], len(trY)), dtype='int16')
-		#purity_all_epochs = np.zeros(shape=(experiment_parameter['eval_latent_epochs'], len(z_mean)))
-		#cluster_balance_all_epochs = np.zeros(shape=(experiment_parameter['eval_latent_epochs'], len(z_mean)))
-
 	# iterate over distinct minibatches
 	for i, batch in enumerate(dataloader):
 
@@ -415,9 +367,6 @@ for epoch in range(experiment_parameter['no_epochs']):
 		# randomly sample minibatch of target distribution
 		# todo: maybe include in corresponding data loader
 		z_target_batch = z_target[np.random.randint(0, np.shape(z_target)[0]-1, batch.shape[0])]
-
-		# convert to pytorch tensor
-		# z_target_batch = torch.FloatTensor(z_target_batch)
 
 		# case: GPU computing enabled
 		if experiment_parameter['use_cuda'] is True:
@@ -440,8 +389,8 @@ for epoch in range(experiment_parameter['no_epochs']):
 		rec_batch = decoder(z)
 
 		# categorical numeric split
-		batch_cat, batch_num = split_2_dummy_numeric(batch, encoded_cat_transactions.shape[1])
-		rec_batch_cat, rec_batch_num = split_2_dummy_numeric(rec_batch, encoded_cat_transactions.shape[1])
+		batch_cat, batch_num = uha.split_2_dummy_numeric(batch, encoded_cat_transactions.shape[1])
+		rec_batch_cat, rec_batch_num = uha.split_2_dummy_numeric(rec_batch, encoded_cat_transactions.shape[1])
 
 		# backward pass + gradients update
 		rec_error_cat = reconstruction_criterion_categorical(input=rec_batch_cat, target=batch_cat)  # one-hot attr error
@@ -481,7 +430,7 @@ for epoch in range(experiment_parameter['no_epochs']):
 
 		# determine discriminator error
 		# the target distribution should look like ones, target = 1
-		d_fake_error = criterion(input=d_fake_decision, target=d_fake_target) #.cuda())
+		d_fake_error = discriminator_criterion_categorical(input=d_fake_decision, target=d_fake_target) #.cuda())
 
 		#  2b. forward pass on real transactional mb data (non-sampled)
 
@@ -502,7 +451,7 @@ for epoch in range(experiment_parameter['no_epochs']):
 
 		# determine discriminator error
 		# the real distribution should look like zeros, real = 0
-		d_real_error = criterion(input=d_real_decision, target=d_real_target_zeros) #.cuda())  # zeros = fake
+		d_real_error = discriminator_criterion_categorical(input=d_real_decision, target=d_real_target_zeros) #.cuda())  # zeros = fake
 
 		# combine both decision errors
 		d_error = d_fake_error + d_real_error
@@ -519,13 +468,9 @@ for epoch in range(experiment_parameter['no_epochs']):
 
 		# set network in training mode
 		encoder.train()
-		discriminator.train()
 
 		# reset encoder gradients
 		encoder.zero_grad()
-
-		# reset discriminator gradients
-		#discriminator.zero_grad()
 
 		# encode real mini-batch data to derive latent representation z
 		z_real_batch = encoder(batch)
@@ -544,10 +489,16 @@ for epoch in range(experiment_parameter['no_epochs']):
 
 		# determine discriminator error
 		# the real distribution should look like ones, real = 1
-		d_real_error_fool = criterion(input=d_real_decision, target=d_real_target_ones) #.cuda())  # ones = true: here we try to fool D
+		d_real_error_fool = discriminator_criterion_categorical(input=d_real_decision, target=d_real_target_ones) #.cuda())  # ones = true: here we try to fool D
+
+		# determine latent space reconstruction error
+		rec_error_latent = reconstruction_criterion_numeric(input=z_real_batch[:, 0:experiment_parameter['no_gauss']], target=batch[:, 0:experiment_parameter['no_gauss']])
+
+		# determine encoder loss
+		encoder_loss = d_real_error_fool + rec_error_latent
 
 		# run error back-propagation
-		d_real_error_fool.backward()
+		encoder_loss.backward()
 
 		# optimize the encoder parameters
 		encoder_optimizer.step()  # only optimizes encoder's parameters
@@ -581,8 +532,13 @@ for epoch in range(experiment_parameter['no_epochs']):
 			now = dt.datetime.utcnow().strftime('%Y.%m.%d-%H:%M:%S')
 			print('[INFO {}] DeepGAN:: DS classification error, fool (BCE): {}.'.format(now, str(d_real_error_fool.item())))
 
+			# log configuration processing
+			rec_error_latent = np.round(rec_error_latent.item(), 4)
+			now = dt.datetime.utcnow().strftime('%Y.%m.%d-%H:%M:%S')
+			print('[INFO {}] DeepGAN:: Encoder latent space reconstruction error, fool (BCE): {}.'.format(now, str(rec_error_latent.item())))
+
 			# collect training results
-			batch_train_results = np.array([epoch, i, rec_error_cat, rec_error_num, rec_error, d_real_error, d_fake_error, d_error, d_real_error_fool])
+			batch_train_results = np.array([epoch, i, rec_error_cat, rec_error_num, rec_error, d_real_error, d_fake_error, d_error, d_real_error_fool, rec_error_latent])
 
 			# case: initial batch
 			if len(all_train_results) == 0:
@@ -601,7 +557,7 @@ for epoch in range(experiment_parameter['no_epochs']):
 	if epoch % experiment_parameter['eval_epochs'] == 0 and epoch != 0:
 
 		# convert to pandas data frame
-		cols = ['epoch', 'mb', 'rec_error_cat', 'rec_error_num', 'rec_error', 'd_real_error', 'd_fake_error', 'd_error', 'd_real_error_fool']
+		cols = ['epoch', 'mb', 'rec_error_cat', 'rec_error_num', 'rec_error', 'd_real_error', 'd_fake_error', 'd_error', 'd_real_error_fool', 'rec_error_latent']
 		df_all_train_results = pd.DataFrame(all_train_results, columns=cols)
 
 		# save results data frame to file directory
@@ -612,10 +568,9 @@ for epoch in range(experiment_parameter['no_epochs']):
 		df_all_train_results_agg = df_all_train_results.groupby(['epoch']).sum()
 
 		# plot training losses
-		filename = '01_training_results.png'
 		title = 'GAN AE Traning losses'.format(str(epoch))
-		vha.plot_training_losses(losses=df_all_train_results_agg, filename=filename, title=title)
-		vha.plot_training_losses_new(losses=df_all_train_results_agg, filename=filename, title=title)
+		file_name = '01_training_results.png'
+		vha.plot_training_losses_all(losses=df_all_train_results_agg, filename=file_name, title=title)
 
 	##### analyze latent representation
 
@@ -627,13 +582,24 @@ for epoch in range(experiment_parameter['no_epochs']):
 		# convert latent space representation to numpy
 		z_enc_transactions = z_enc_transactions.cpu().data.numpy()
 
-		# visualize latent space
-		title = 'Epoch {} Latent Space Distribtion $Z$'.format(str(epoch))
-		vha.visualize_z_space(z_representation=z_enc_transactions, title=title, filename='01_latent_space_ep_{}_bt_{}'.format(str(epoch).zfill(4), str(i).zfill(4)), color='C1')
-
 		# convert encodings to pandas data frame
-		cols = ['x', 'y']
+		cols = [str(x) for x in range(experiment_parameter['no_gauss'])]
+		cols.extend(['x', 'y'])
 		df_z_enc_transactions = pd.DataFrame(z_enc_transactions, columns=cols)
+
+		# visualize latent space
+		title = 'Training Epoch {} Latent Space Distribution $Z$'.format(str(epoch))
+		file_name = '01_latent_space_ep_{}_bt_{}.png'.format(str(epoch).zfill(4), str(i).zfill(4))
+		vha.visualize_z_space(z_representation=df_z_enc_transactions, title=title, filename=file_name, color='C1')
+
+		# merge embeddings with actual transactions
+		df_embedded_transactions = pd.concat([transactions_filtered, df_z_enc_transactions], axis=1, sort=False)
+
+		# visualize latent space
+		feature = experiment_parameter['target_feature']
+		title = 'Training Epoch {} Latent Space {} Feature Distribution $Z$'.format(str(epoch), str(experiment_parameter['target_feature']))
+		file_name = '01_latent_space_ep_{}_bt_{}_ft_{}.png'.format(str(epoch).zfill(4), str('eval'), str(experiment_parameter['target_feature']))
+		vha.visualize_z_space_feature(z_representation=df_embedded_transactions, feature=feature, title=title, filename=file_name, limits=False)
 
 		# save encodings data frame to file directory
 		filename = '01_encodings_ep_{}.csv'.format(str(epoch))
@@ -655,43 +621,5 @@ for epoch in range(experiment_parameter['no_epochs']):
 		discriminator_model_name = 'ep_{}_discriminator_model.pkl'.format(str(epoch + 1).zfill(4))
 		torch.save(discriminator.state_dict(), os.path.join(mod_dir, discriminator_model_name))
 
-'''
-	#if epoch % plot_interval == 0:
-	# =================== INFERENCE and collection of scores ============================
-
-	encoder_cpu = encoder.cpu()
-	# get reconstruction of all samples
-	x_all = Variable(torch.Tensor(trX))
-	z_space = encoder_cpu(x_all).data.numpy()
-
-	# compute kmeans clustering on the latent variables
-	kmeans_model = cluster.KMeans(n_clusters=len(z_mean), init=z_mean)
-	kmeans_model.fit(z_space)
-	kmeans_labels = kmeans_model.labels_
-
-	# compute purity score on the input data based on the labels from kmeans
-	scores = get_purity(kmeans_labels, trX)
-
-	# collect intermediate results
-	z_space_all_epochs[epoch%experiment_parameter['eval_latent_epochs']] = z_space
-	purity_all_epochs[epoch%experiment_parameter['eval_latent_epochs']] = scores[0]
-	cluster_balance_all_epochs[epoch%experiment_parameter['eval_latent_epochs']] = scores[1]
-	cluster_labels_all_epochs[epoch%experiment_parameter['eval_latent_epochs']] = kmeans_labels
-
-	if epoch % experiment_parameter['eval_epochs'] == 0:
-		print("Purity score: %s" % purity_all_epochs[epoch%experiment_parameter['eval_latent_epochs']])
-		print("Clusters balance: %s" % cluster_balance_all_epochs[epoch%experiment_parameter['eval_latent_epochs']])
-		print("Clusters balance fraction: %s" % np.round((cluster_balance_all_epochs[epoch%experiment_parameter['eval_latent_epochs']] / n_samples), 2))
-
-	if (epoch+1) % experiment_parameter['eval_latent_epochs'] == 0:
-		np.save(sta_dir + 'z_space_ep_' + str(epoch+1) + '.npy', z_space_all_epochs)
-		np.save(sta_dir + 'purity_ep_' + str(epoch+1) + '.npy', purity_all_epochs)
-		np.save(sta_dir + 'cluster_balance_ep_' + str(epoch+1) + '.npy', cluster_balance_all_epochs)
-		np.save(sta_dir + 'cluster_labels_ep_' + str(epoch+1) + '.npy', cluster_labels_all_epochs)
-
-		#os.system('tar cvzf 8gauss_2d_scores.tar.gz ' + scores_folder)
-		#os.system('rm -R ' + scores_folder)
-np.save(sta_dir + 'trY.npy', trY)
-'''
 
 
