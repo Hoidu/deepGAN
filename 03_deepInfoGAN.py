@@ -599,7 +599,7 @@ for epoch in range(experiment_parameter['no_epochs']):
 		feature = experiment_parameter['target_feature']
 		title = 'Training Epoch {} Latent Space {} Feature Distribution $Z$'.format(str(epoch), str(experiment_parameter['target_feature']))
 		file_name = '01_latent_space_ep_{}_bt_{}_ft_{}.png'.format(str(epoch).zfill(4), str('eval'), str(experiment_parameter['target_feature']))
-		vha.visualize_z_space_feature(z_representation=df_embedded_transactions, feature=feature, title=title, filename=file_name, limits=False)
+		vha.visualize_z_space_cat_feature(z_representation=df_embedded_transactions, feature=feature, title=title, filename=file_name, limits=False)
 
 		# save encodings data frame to file directory
 		filename = '01_encodings_ep_{}.csv'.format(str(epoch))

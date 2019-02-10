@@ -352,7 +352,8 @@ print('[INFO {}] DeepGAN:: Completed latent space feature distribution plots of 
 # visualize latent space categorical feature distribution (entire space)
 ########################################################################################################################
 
-'''
+# set numerical features
+cat_features = ['BUKRS', 'WAERS', 'KTOSL', 'PRCTR',	'BSCHL', 'HKONT']
 
 # set network in training mode
 decoder_eval.eval()
@@ -363,94 +364,96 @@ y_coord = np.arange(0.0, 1.0, 0.01)
 
 # generate equi-distant mesh grid
 x_mesh, y_mesh = np.meshgrid(x_coord, y_coord)
-m_encodings_numeric = np.round(np.array([x_mesh.flatten(), y_mesh.flatten()]).T, 2)
+z_embeddings_numeric = np.round(np.array([x_mesh.flatten(), y_mesh.flatten()]).T, 2)
+
+# convert to pandas dataframe
+df_z_embeddings_numeric = pd.DataFrame(z_embeddings_numeric, columns=['X', 'Y'])
 
 # determine all encoded columns of target feature
-target_feature_columns = [col for col in encoded_cat_transactions.columns if experiment_parameter['target_feature'] in col]
+#target_feature_columns = [col for col in encoded_cat_transactions.columns if experiment_parameter['target_feature'] in col]
 
 # determine all encoded values of target feature
-encoded_cat_transactions_target = encoded_cat_transactions[target_feature_columns]
+#encoded_cat_transactions_target = encoded_cat_transactions[target_feature_columns]
 
 # iterate number of gaussians
 for i in range(0, experiment_parameter['no_gauss']):
 
     # create artificial categorical encodings
-    me_encodings_catgeorical = np.zeros((m_encodings_numeric.shape[0], experiment_parameter['no_gauss']))
-    me_encodings_catgeorical[:, i] = 1.0
+    z_embeddings_catgeorical = np.zeros((z_embeddings_numeric.shape[0], experiment_parameter['no_gauss']))
+    z_embeddings_catgeorical[:, i] = 1.0
+
+    # convert to pandas dataframe
+    column_names = [str(x) for x in range(experiment_parameter['no_gauss'])]
+    df_z_embeddings_categorical = pd.DataFrame(z_embeddings_catgeorical, columns=column_names)
 
     # merge categorical and numerical encodings
-    m_encodings = np.column_stack((me_encodings_catgeorical, m_encodings_numeric))
+    z_embeddings = np.column_stack((z_embeddings_catgeorical, z_embeddings_numeric))
+
+    # convert embeddings transactions to torch tensor
+    torch_z_embeddings = torch.FloatTensor(z_embeddings)
+
+    # determine decoded transactions (one-hot encoded)
+    decoded_samples = decoder_eval(torch_z_embeddings)
+
+    # convert to pandas dataframe
+    df_decoded_samples = pd.DataFrame(decoded_samples.detach().numpy(), columns=encoded_columns)
+
+    # merge decoded - reconstructed transactions and embeddings
+    df_decoded_samples_and_embeddings = pd.concat([df_decoded_samples, df_z_embeddings_numeric[['X', 'Y']]], axis=1)
+
+    # determine embedded transactions of actual target value
+    # todo: caution - near optimal approximation, embedded_transactions[encoded_cat_transactions_target.iloc[:, i] == 1.0]
+    df_encoded_transactions_and_embeddings_actual = df_encoded_transactions_and_embeddings[df_encoded_transactions_and_embeddings[str(i)] >= 0.98]
 
     # log configuration processing
     now = dt.datetime.utcnow().strftime('%Y.%m.%d-%H:%M:%S')
-    print('[INFO {}] DeepGAN:: Successfully sampled {} equi-distant samples in the latent space.'.format(now, str(m_encodings.size)))
-
-    # convert embeddings transactions to torch tensor
-    m_encodings_torch = torch.FloatTensor(m_encodings)
-
-    # determine encoded transactions
-    m_enc_transactions = decoder_eval(m_encodings_torch)
-
-    # convert to pandas dataframe
-    m_enc_transactions = pd.DataFrame(m_enc_transactions.detach().numpy(), columns=encoded_columns)
-
-    # convert mesh encodings to pandas
-    cols = [str(x) for x in range(experiment_parameter['no_gauss'])]
-    cols.extend(['X', 'Y'])
-    df_m_encodings = pd.DataFrame(m_encodings, columns=cols)
-
-    # determine embedded transactions of actual target value
-    embedded_transactions_actual = embedded_transactions[encoded_cat_transactions_target.iloc[:, i] == 1.0]
-
-    # set categorical features
-    cat_features = ['KTOSL', 'WAERS', 'BUKRS', 'PRCTR', 'BSCHL', 'HKONT']
+    print('[INFO {}] DeepGAN:: Successfully sampled {} equi-distant samples in the latent space.'.format(now, str(df_z_embeddings_categorical.size)))
 
     # iterate over all categorical features
     for feature in cat_features:
 
         # determine all columns of actual feature
-        feature_columns = [col for col in m_enc_transactions.columns if feature in col]
+        feature_columns = [col for col in df_decoded_samples_and_embeddings.columns if feature in col]
 
         # extract corresponding encodings
-        feature_encodings = m_enc_transactions[feature_columns]
+        feature_embeddings = df_decoded_samples_and_embeddings[feature_columns]
 
         # determine max value per row
-        feature_encodings['MAX_FEATURE'] = feature_encodings.idxmax(axis=1)
+        feature_embeddings.loc[:, 'MAX_FEATURE'] = feature_embeddings.idxmax(axis=1)
 
         # concatenate encoding with latent space coordinates
-        feature_encodings = pd.concat([feature_encodings, df_m_encodings], axis=1)
+        feature_embeddings = pd.concat([feature_embeddings, df_decoded_samples_and_embeddings], axis=1)
 
         # subset max feature value and latent space coordinates
-        feature_encodings_final = feature_encodings[['MAX_FEATURE', 'X', 'Y']]
+        max_feature_embeddings = feature_embeddings[['MAX_FEATURE', 'X', 'Y']]
 
         # left strip feature names of encoded feature
-        feature_encodings_final['MAX_FEATURE'] = feature_encodings_final['MAX_FEATURE'].map(lambda x: x.lstrip(str(feature) + '_'))
+        max_feature_embeddings.loc[:, 'MAX_FEATURE'] = max_feature_embeddings['MAX_FEATURE'].map(lambda x: x.lstrip(str(feature) + '_'))
 
         # determine determine numerical representation of categorical features
-        feature_encodings_final['Z'] = feature_encodings_final['MAX_FEATURE'].astype("category").cat.codes
+        max_feature_embeddings.loc[:, 'MAX_FEATURE_CODE'] = max_feature_embeddings['MAX_FEATURE'].astype("category").cat.codes
 
         # visualize sampled latent space
-        title = 'Training Epoch {} Latent Space Sampling Distribution $Z$'.format(str(experiment_parameter['no_epochs']))
+        title = 'Feature {}, $Z$ Space Sampling Distribution, Training Epoch {}'.format(str(feature), str(experiment_parameter['no_epochs']))
         file_name = '02a_latent_space_sampling_ep_{}_bt_{}_gs_{}_ft_{}.png'.format(str(experiment_parameter['no_epochs']).zfill(4), str('eval'), str(i), str(feature))
-        vha.visualize_z_cat_space_sampling(feature_encodings=feature_encodings_final, x_coord=x_coord, y_coord=y_coord, filename=file_name, title=title)
+        vha.visualize_z_categorical_space_sampling(decoded_samples_and_embeddings=max_feature_embeddings, x_coord=x_coord, y_coord=y_coord, filename=file_name, title=title)
 
         # visualize sampled latent space
-        title = 'Epoch {} Latent Space Sampling Distribution $Z$'.format(str(experiment_parameter['no_epochs']))
+        title = 'Feature {}, $Z$ Space Sampling Distribution incl. Embeddings $z_i$, Training Epoch {}'.format(str(feature), str(experiment_parameter['no_epochs']))
         file_name = '02b_latent_space_sampling_ep_{}_bt_{}_gs_{}_ft_{}.png'.format(str(experiment_parameter['no_epochs']).zfill(4), str('eval'), str(i), str(feature))
-        vha.visualize_z_space_sampling_and_transactions(feature=feature, z_representation=embedded_transactions_actual, feature_encodings=feature_encodings_final, x_coord=x_coord, y_coord=y_coord, filename=file_name, title=title)
+        vha.visualize_z_categorical_space_sampling_and_transactions(decoded_samples_and_embeddings=max_feature_embeddings, encoded_transactions_and_embeddings=df_encoded_transactions_and_embeddings_actual, feature=feature, x_coord=x_coord, y_coord=y_coord, filename=file_name, title=title)
 
         # log configuration processing
         now = dt.datetime.utcnow().strftime('%Y.%m.%d-%H:%M:%S')
         print('[INFO {}] DeepGAN:: Completed latent space feature area plots of feature {}.'.format(now, str(feature)))
         
-'''
 
 ########################################################################################################################
 # visualize latent space numerical feature distribution (entire space)
 ########################################################################################################################
 
-# set categorical features
-cat_features = ['DMBTR', 'WRBTR']
+# set numerical features
+num_features = ['DMBTR', 'WRBTR']
 
 # set network in training mode
 decoder_eval.eval()
@@ -493,7 +496,7 @@ for i in range(0, experiment_parameter['no_gauss']):
     df_decoded_samples_and_embeddings = pd.concat([df_decoded_samples, df_z_embeddings_numeric[['X', 'Y']]], axis=1)
 
     # determine embedded transactions of actual target value
-    # todo: caution - near optimal approximation
+    # todo: caution - near optimal approximation, embedded_transactions[encoded_cat_transactions_target.iloc[:, i] == 1.0]
     df_encoded_transactions_and_embeddings_actual = df_encoded_transactions_and_embeddings[df_encoded_transactions_and_embeddings[str(i)] >= 0.98]
 
     # log configuration processing
@@ -501,7 +504,7 @@ for i in range(0, experiment_parameter['no_gauss']):
     print('[INFO {}] DeepGAN:: Successfully sampled {} equi-distant samples in the latent space.'.format(now, str(df_z_embeddings_categorical.size)))
 
     # iterate over all categorical features
-    for feature in cat_features:
+    for feature in num_features:
 
         # visualize sampled latent space
         title = 'Feature {}, $Z$ Space Sampling Distribution, Training Epoch {}'.format(str(feature), str(experiment_parameter['no_epochs']))

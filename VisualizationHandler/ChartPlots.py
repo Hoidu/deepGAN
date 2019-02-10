@@ -141,7 +141,7 @@ class ChartPlots(object):
 		# close plot
 		plt.close()
 
-	def visualize_z_cat_space_sampling(self, feature_encodings, x_coord, y_coord, filename, title):
+	def visualize_z_categorical_space_sampling(self, decoded_samples_and_embeddings, x_coord, y_coord, filename, title):
 
 		# set plotting appearance
 		plt.style.use('seaborn')
@@ -150,19 +150,22 @@ class ChartPlots(object):
 		fig, ax = plt.subplots(1, 1)
 
 		# determine levels of encodings
-		level_min = np.min(feature_encodings['Z'].unique())
-		level_max = np.max(feature_encodings['Z'].unique())
+		level_min = np.min(decoded_samples_and_embeddings['MAX_FEATURE_CODE'].unique())
+		level_max = np.max(decoded_samples_and_embeddings['MAX_FEATURE_CODE'].unique())
 
 		# determine visualization levels
 		levels = np.arange(level_min - 0.5, level_max + 1.5, 1.0)
 
-		# determien x and y meshgrid
+		# determine x and y meshgrid
 		x_mesh, y_mesh = np.meshgrid(x_coord, y_coord)
 
-		im = ax.contourf(x_mesh, y_mesh, np.array(feature_encodings['Z']).reshape(len(x_coord), len(y_coord)), cmap=plt.cm.coolwarm, levels=levels)
+		# create contour plot of categorical attribute
+		im = ax.contourf(x_mesh, y_mesh, np.array(decoded_samples_and_embeddings['MAX_FEATURE_CODE']).reshape(len(x_coord), len(y_coord)), cmap=plt.cm.coolwarm, levels=levels)
+
+		# reformat colorbar
 		cbar = fig.colorbar(im, ax=ax)
-		cbar.set_ticks(feature_encodings['Z'].unique())
-		cbar.set_ticklabels(feature_encodings['MAX_FEATURE'].unique())
+		cbar.set_ticks(decoded_samples_and_embeddings['MAX_FEATURE_CODE'].unique())
+		cbar.set_ticklabels(decoded_samples_and_embeddings['MAX_FEATURE'].unique())
 
 		# set axis labels
 		ax.set_xlabel('$z_1$')
@@ -317,40 +320,43 @@ class ChartPlots(object):
 		# close plot
 		plt.close()
 
-	def visualize_z_space_sampling_and_transactions(self, feature, z_representation, feature_encodings, x_coord, y_coord, filename, title):
+	def visualize_z_categorical_space_sampling_and_transactions(self, decoded_samples_and_embeddings, encoded_transactions_and_embeddings, feature, x_coord, y_coord, filename, title):
 
 		# set plotting appearance
 		plt.style.use('seaborn')
-		plt.rcParams['figure.figsize'] = [20, 20]  # width * height
+		plt.rcParams['figure.figsize'] = [10, 10]  # width * height
 		plt.rcParams['agg.path.chunksize'] = 1000000
 		fig, ax = plt.subplots(1, 1)
 
 		# determine levels of encodings
-		level_min = np.min(feature_encodings['Z'].unique())
-		level_max = np.max(feature_encodings['Z'].unique())
+		level_min = np.min(decoded_samples_and_embeddings['MAX_FEATURE_CODE'].unique())
+		level_max = np.max(decoded_samples_and_embeddings['MAX_FEATURE_CODE'].unique())
 
-		# determine visualization levels
+		# determine equi-distant visualization levels
 		levels = np.arange(level_min - 0.5, level_max + 1.5, 1.0)
 
 		# determien x and y meshgrid
 		x_mesh, y_mesh = np.meshgrid(x_coord, y_coord)
 
-		im = ax.contourf(x_mesh, y_mesh, np.array(feature_encodings['Z']).reshape(len(x_coord), len(y_coord)), cmap=plt.cm.coolwarm, levels=levels)
+		# create contour plot of categorical attribute
+		im = ax.contourf(x_mesh, y_mesh, np.array(decoded_samples_and_embeddings['MAX_FEATURE_CODE']).reshape(len(x_coord), len(y_coord)), cmap=plt.cm.coolwarm, levels=levels)
+
+		# reformat colorbar
 		cbar = fig.colorbar(im, ax=ax)
-		cbar.set_ticks(feature_encodings['Z'].unique())
-		cbar.set_ticklabels(feature_encodings['MAX_FEATURE'].unique())
+		cbar.set_ticks(decoded_samples_and_embeddings['MAX_FEATURE_CODE'].unique())
+		cbar.set_ticklabels(decoded_samples_and_embeddings['MAX_FEATURE'].unique())
 
 		# determine feature groups
-		groups = z_representation.groupby(feature)
+		encoded_transactions_and_embeddings_levels = encoded_transactions_and_embeddings.groupby(feature)
 
 		# iterate over feature groups
-		for name, group in groups:
+		for level_name, level in encoded_transactions_and_embeddings_levels:
 
 			# create train scatter plot
-			ax.scatter(group.x, group.y, marker='o', edgecolors='w', label=str(name))
+			ax.scatter(level['x'], level['y'], marker='o', facecolors='none', edgecolors='w', label=str(level_name))
 
 		# add legend to plot
-		ax.legend(loc='upper left')
+		#ax.legend(loc='upper left')
 
 		# set axis labels
 		ax.set_xlabel('$x$')
