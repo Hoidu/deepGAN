@@ -282,67 +282,77 @@ title = 'Epoch {} Latent Space Distribution $Z$'.format(str(experiment_parameter
 vha.visualize_z_space(z_representation=df_z_enc_transactions, title=title, filename='01_latent_space_ep_{}_bt_{}'.format(str(experiment_parameter['no_epochs']).zfill(4), str('eval'), color='C1'))
 
 # merge embeddings with actual transactions
-embedded_transactions = pd.concat([transactions_filtered, df_z_enc_transactions], axis=1, sort=False)
+df_encoded_transactions_and_embeddings = pd.concat([transactions_filtered, df_z_enc_transactions], axis=1, sort=False)
 
 # save encodings data frame to file directory
 filename = '01_embedded_eval_ep_{}.csv'.format(str(experiment_parameter['no_epochs']).zfill(4))
-embedded_transactions.to_csv(os.path.join(evl_dir, filename), sep=';', index=False, encoding='utf-8')
+df_encoded_transactions_and_embeddings.to_csv(os.path.join(evl_dir, filename), sep=';', index=False, encoding='utf-8')
+
+########################################################################################################################
+# visualize latent space feature distribution (transactions)
+########################################################################################################################
+
+'''
 
 # visualize latent space
 feature = 'DMBTR'
 title = 'Training Epoch {} Latent Space {} Feature Distribution $Z$'.format(str(experiment_parameter['no_epochs']), str(feature))
 file_name = '01_latent_space_ep_{}_bt_{}_ft_{}.png'.format(str(experiment_parameter['no_epochs']).zfill(4), str('eval'), str(feature))
-vha.visualize_z_space_con_feature(z_representation=embedded_transactions, feature=feature, title=title, filename=file_name, limits=False)
+vha.visualize_z_space_con_feature(z_representation=df_encoded_transactions_and_embeddings, feature=feature, title=title, filename=file_name, limits=False)
 
 # visualize latent space
 feature = 'WRBTR'
 title = 'Training Epoch {} Latent Space {} Feature Distribution $Z$'.format(str(experiment_parameter['no_epochs']), str(feature))
 file_name = '01_latent_space_ep_{}_bt_{}_ft_{}.png'.format(str(experiment_parameter['no_epochs']).zfill(4), str('eval'), str(feature))
-vha.visualize_z_space_con_feature(z_representation=embedded_transactions, feature=feature, title=title, filename=file_name, limits=False)
+vha.visualize_z_space_con_feature(z_representation=df_encoded_transactions_and_embeddings, feature=feature, title=title, filename=file_name, limits=False)
 
 # visualize latent space
 feature = 'KTOSL'
 title = 'Training Epoch {} Latent Space {} Feature Distribution $Z$'.format(str(experiment_parameter['no_epochs']), str(feature))
 file_name = '01_latent_space_ep_{}_bt_{}_ft_{}.png'.format(str(experiment_parameter['no_epochs']).zfill(4), str('eval'), str(feature))
-vha.visualize_z_space_cat_feature(z_representation=embedded_transactions, feature=feature, title=title, filename=file_name, limits=False)
+vha.visualize_z_space_cat_feature(z_representation=df_encoded_transactions_and_embeddings, feature=feature, title=title, filename=file_name, limits=False)
 
 # visualize latent space
 feature = 'WAERS'
 title = 'Training Epoch {} Latent Space {} Feature Distribution $Z$'.format(str(experiment_parameter['no_epochs']), str(feature))
 file_name = '01_latent_space_ep_{}_bt_{}_ft_{}.png'.format(str(experiment_parameter['no_epochs']).zfill(4), str('eval'), str(feature))
-vha.visualize_z_space_cat_feature(z_representation=embedded_transactions, feature=feature, title=title, filename=file_name, limits=False)
+vha.visualize_z_space_cat_feature(z_representation=df_encoded_transactions_and_embeddings, feature=feature, title=title, filename=file_name, limits=False)
 
 # visualize latent space
 feature = 'BUKRS'
 title = 'Training Epoch {} Latent Space {} Feature Distribution $Z$'.format(str(experiment_parameter['no_epochs']), str(feature))
 file_name = '01_latent_space_ep_{}_bt_{}_ft_{}.png'.format(str(experiment_parameter['no_epochs']).zfill(4), str('eval'), str(feature))
-vha.visualize_z_space_cat_feature(z_representation=embedded_transactions, feature=feature, title=title, filename=file_name, limits=False)
+vha.visualize_z_space_cat_feature(z_representation=df_encoded_transactions_and_embeddings, feature=feature, title=title, filename=file_name, limits=False)
 
 # visualize latent space
 feature = 'PRCTR'
 title = 'Training Epoch {} Latent Space {} Feature Distribution $Z$'.format(str(experiment_parameter['no_epochs']), str(feature))
 file_name = '01_latent_space_ep_{}_bt_{}_ft_{}.png'.format(str(experiment_parameter['no_epochs']).zfill(4), str('eval'), str(feature))
-vha.visualize_z_space_cat_feature(z_representation=embedded_transactions, feature=feature, title=title, filename=file_name, limits=False)
+vha.visualize_z_space_cat_feature(z_representation=df_encoded_transactions_and_embeddings, feature=feature, title=title, filename=file_name, limits=False)
 
 # visualize latent space
 feature = 'BSCHL'
 title = 'Training Epoch {} Latent Space {} Feature Distribution $Z$'.format(str(experiment_parameter['no_epochs']), str(feature))
 file_name = '01_latent_space_ep_{}_bt_{}_ft_{}.png'.format(str(experiment_parameter['no_epochs']).zfill(4), str('eval'), str(feature))
-vha.visualize_z_space_cat_feature(z_representation=embedded_transactions, feature=feature, title=title, filename=file_name, limits=False)
+vha.visualize_z_space_cat_feature(z_representation=df_encoded_transactions_and_embeddings, feature=feature, title=title, filename=file_name, limits=False)
 
 # visualize latent space
 feature = 'HKONT'
 title = 'Training Epoch {} Latent Space {} Feature Distribution $Z$'.format(str(experiment_parameter['no_epochs']), str(feature))
 file_name = '01_latent_space_ep_{}_bt_{}_ft_{}.png'.format(str(experiment_parameter['no_epochs']).zfill(4), str('eval'), str(feature))
-vha.visualize_z_space_cat_feature(z_representation=embedded_transactions, feature=feature, title=title, filename=file_name)
+vha.visualize_z_space_cat_feature(z_representation=df_encoded_transactions_and_embeddings, feature=feature, title=title, filename=file_name)
 
 # log configuration processing
 now = dt.datetime.utcnow().strftime('%Y.%m.%d-%H:%M:%S')
 print('[INFO {}] DeepGAN:: Completed latent space feature distribution plots of data samples.'.format(now))
 
+'''
+
 ########################################################################################################################
-# evaluate latent space feature distribution (entire space)
+# visualize latent space categorical feature distribution (entire space)
 ########################################################################################################################
+
+'''
 
 # set network in training mode
 decoder_eval.eval()
@@ -422,12 +432,86 @@ for i in range(0, experiment_parameter['no_gauss']):
         # visualize sampled latent space
         title = 'Training Epoch {} Latent Space Sampling Distribution $Z$'.format(str(experiment_parameter['no_epochs']))
         file_name = '02a_latent_space_sampling_ep_{}_bt_{}_gs_{}_ft_{}.png'.format(str(experiment_parameter['no_epochs']).zfill(4), str('eval'), str(i), str(feature))
-        vha.visualize_z_space_sampling(feature_encodings=feature_encodings_final, x_coord=x_coord, y_coord=y_coord, filename=file_name, title=title)
+        vha.visualize_z_cat_space_sampling(feature_encodings=feature_encodings_final, x_coord=x_coord, y_coord=y_coord, filename=file_name, title=title)
 
         # visualize sampled latent space
         title = 'Epoch {} Latent Space Sampling Distribution $Z$'.format(str(experiment_parameter['no_epochs']))
         file_name = '02b_latent_space_sampling_ep_{}_bt_{}_gs_{}_ft_{}.png'.format(str(experiment_parameter['no_epochs']).zfill(4), str('eval'), str(i), str(feature))
         vha.visualize_z_space_sampling_and_transactions(feature=feature, z_representation=embedded_transactions_actual, feature_encodings=feature_encodings_final, x_coord=x_coord, y_coord=y_coord, filename=file_name, title=title)
+
+        # log configuration processing
+        now = dt.datetime.utcnow().strftime('%Y.%m.%d-%H:%M:%S')
+        print('[INFO {}] DeepGAN:: Completed latent space feature area plots of feature {}.'.format(now, str(feature)))
+        
+'''
+
+########################################################################################################################
+# visualize latent space numerical feature distribution (entire space)
+########################################################################################################################
+
+# set categorical features
+cat_features = ['DMBTR', 'WRBTR']
+
+# set network in training mode
+decoder_eval.eval()
+
+# generate equi-distant samples in the latent space
+x_coord = np.arange(0.0, 1.0, 0.01)
+y_coord = np.arange(0.0, 1.0, 0.01)
+
+# generate equi-distant mesh grid
+x_mesh, y_mesh = np.meshgrid(x_coord, y_coord)
+z_embeddings_numeric = np.round(np.array([x_mesh.flatten(), y_mesh.flatten()]).T, 2)
+
+# convert to pandas dataframe
+df_z_embeddings_numeric = pd.DataFrame(z_embeddings_numeric, columns=['X', 'Y'])
+
+# iterate number of gaussians
+for i in range(0, experiment_parameter['no_gauss']):
+
+    # create artificial categorical encodings
+    z_embeddings_catgeorical = np.zeros((z_embeddings_numeric.shape[0], experiment_parameter['no_gauss']))
+    z_embeddings_catgeorical[:, i] = 1.0
+
+    # convert to pandas dataframe
+    column_names = [str(x) for x in range(experiment_parameter['no_gauss'])]
+    df_z_embeddings_categorical = pd.DataFrame(z_embeddings_catgeorical, columns=column_names)
+
+    # merge categorical and numerical encodings
+    z_embeddings = np.column_stack((z_embeddings_catgeorical, z_embeddings_numeric))
+
+    # convert embeddings transactions to torch tensor
+    torch_z_embeddings = torch.FloatTensor(z_embeddings)
+
+    # determine decoded transactions (one-hot encoded)
+    decoded_samples = decoder_eval(torch_z_embeddings)
+
+    # convert decoded - reconstructed transactions to pandas dataframe
+    df_decoded_samples = pd.DataFrame(decoded_samples.detach().numpy(), columns=encoded_columns)
+
+    # merge decoded - reconstructed transactions and embeddings
+    df_decoded_samples_and_embeddings = pd.concat([df_decoded_samples, df_z_embeddings_numeric[['X', 'Y']]], axis=1)
+
+    # determine embedded transactions of actual target value
+    # todo: caution - near optimal approximation
+    df_encoded_transactions_and_embeddings_actual = df_encoded_transactions_and_embeddings[df_encoded_transactions_and_embeddings[str(i)] >= 0.98]
+
+    # log configuration processing
+    now = dt.datetime.utcnow().strftime('%Y.%m.%d-%H:%M:%S')
+    print('[INFO {}] DeepGAN:: Successfully sampled {} equi-distant samples in the latent space.'.format(now, str(df_z_embeddings_categorical.size)))
+
+    # iterate over all categorical features
+    for feature in cat_features:
+
+        # visualize sampled latent space
+        title = 'Feature {}, $Z$ Space Sampling Distribution, Training Epoch {}'.format(str(feature), str(experiment_parameter['no_epochs']))
+        file_name = '02a_latent_space_sampling_ep_{}_bt_{}_gs_{}_ft_{}.png'.format(str(experiment_parameter['no_epochs']).zfill(4), str('eval'), str(i), str(feature))
+        vha.visualize_z_numeric_space_sampling(decoded_samples_and_embeddings=df_decoded_samples_and_embeddings, feature=feature, x_coord=x_coord, y_coord=y_coord, filename=file_name, title=title, levels=20)
+
+        # visualize sampled latent space
+        title = 'Feature {}, $Z$ Space Sampling Distribution incl. Embeddings $z_i$, Training Epoch {}'.format(str(feature), str(experiment_parameter['no_epochs']))
+        file_name = '02b_latent_space_sampling_ep_{}_bt_{}_gs_{}_ft_{}.png'.format(str(experiment_parameter['no_epochs']).zfill(4), str('eval'), str(i), str(feature))
+        vha.visualize_z_numeric_space_sampling_and_transactions(decoded_samples_and_embeddings=df_decoded_samples_and_embeddings, encoded_transactions_and_embeddings=df_encoded_transactions_and_embeddings_actual, feature=feature, x_coord=x_coord, y_coord=y_coord, filename=file_name, title=title, levels=20)
 
         # log configuration processing
         now = dt.datetime.utcnow().strftime('%Y.%m.%d-%H:%M:%S')

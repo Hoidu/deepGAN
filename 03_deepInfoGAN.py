@@ -169,7 +169,7 @@ num_transactions = transactions_filtered[numeric_attr].copy()
 # log-transform the numerical attributes
 encoded_num_transactions = (num_transactions + 0.0001).apply(np.log)
 
-# normalized the numerical attributes
+# min-max normalize the numerical attributes
 encoded_num_transactions = (encoded_num_transactions - encoded_num_transactions.min()) / (encoded_num_transactions.max() - encoded_num_transactions.min())
 
 ###### merge encoded categorical and numerical attributes

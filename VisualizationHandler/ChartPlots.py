@@ -6,6 +6,7 @@ import matplotlib as mpl
 import matplotlib.pyplot as plt
 import os as os
 import numpy as np
+import pandas as pd
 from matplotlib.ticker import FuncFormatter
 
 mpl.rcParams['agg.path.chunksize'] = 1000000
@@ -127,10 +128,8 @@ class ChartPlots(object):
 		ax.set_title(str(title), fontsize=14)
 
 		# add colorbar to plot
-		fmt = comma_fmt = FuncFormatter(lambda x, p: format(int(x), ',')) # '${x:,.0f}' #'%1.2f'
+		fmt = FuncFormatter(lambda x, p: format(int(x), ','))
 		cbar = fig.colorbar(scatter, ax=ax, format=fmt)
-		#cbar.set_ticks(feature_encodings['Z'].unique())
-		#cbar.set_ticklabels(feature_encodings['MAX_FEATURE'].unique())
 
 		# set grid and tight plotting layout
 		plt.grid(True)
@@ -142,11 +141,11 @@ class ChartPlots(object):
 		# close plot
 		plt.close()
 
-	def visualize_z_space_sampling(self, feature_encodings, x_coord, y_coord, filename, title):
+	def visualize_z_cat_space_sampling(self, feature_encodings, x_coord, y_coord, filename, title):
 
 		# set plotting appearance
 		plt.style.use('seaborn')
-		plt.rcParams['figure.figsize'] = [20, 20]  # width * height
+		plt.rcParams['figure.figsize'] = [10, 10]  # width * height
 		plt.rcParams['agg.path.chunksize'] = 1000000
 		fig, ax = plt.subplots(1, 1)
 
@@ -164,6 +163,138 @@ class ChartPlots(object):
 		cbar = fig.colorbar(im, ax=ax)
 		cbar.set_ticks(feature_encodings['Z'].unique())
 		cbar.set_ticklabels(feature_encodings['MAX_FEATURE'].unique())
+
+		# set axis labels
+		ax.set_xlabel('$z_1$')
+		ax.set_ylabel('$z_2$')
+
+		# set axis limits
+		ax.set_xlim([0.0, 1.0])
+		ax.set_ylim([0.0, 1.0])
+
+		# set plot header
+		ax.set_title(str(title), fontsize=14)
+
+		# set grid and tight plotting layout
+		plt.grid(True)
+		plt.tight_layout()
+
+		# save plot to plotting directory
+		plt.savefig(os.path.join(self.plot_dir, filename), dpi=300)
+
+		# close plot
+		plt.close()
+
+	def visualize_z_numeric_space_sampling(self, decoded_samples_and_embeddings, feature, x_coord, y_coord, filename, title, levels=10):
+
+		# set plotting appearance
+		plt.style.use('seaborn')
+		plt.rcParams['figure.figsize'] = [10, 10]  # width * height
+		plt.rcParams['agg.path.chunksize'] = 1000000
+		fig, ax = plt.subplots(1, 1)
+
+		# determine min and max of decoded numerical transaction feature
+		level_min = np.min(decoded_samples_and_embeddings[feature])
+		level_max = np.max(decoded_samples_and_embeddings[feature])
+
+		# create equi-distant levels
+		levels = np.linspace(level_min, level_max, levels)
+
+		# digitize decoded feature values
+		decoded_samples_and_embeddings.loc[:, 'level'] = np.digitize(decoded_samples_and_embeddings[feature], levels)
+
+		# determine unique equi-distant levels of original feature value
+		unique_levels = decoded_samples_and_embeddings.groupby('level')[feature].max()
+
+		# add additional min level
+		unique_levels = pd.Series([0.0]).append(unique_levels)
+
+		# add additional max level
+		unique_levels = unique_levels.append(pd.Series([1.0]))
+
+		# determine x and y meshgrid
+		x_mesh, y_mesh = np.meshgrid(x_coord, y_coord)
+
+		# create contour plot of numerical attribute
+		im = ax.contourf(x_mesh, y_mesh, np.array(decoded_samples_and_embeddings[feature]).reshape(len(x_coord), len(y_coord)), cmap=plt.cm.coolwarm, levels=unique_levels)
+
+		# reformat colorbar
+		cbar = fig.colorbar(im, ax=ax)
+		cbar.set_ticks(unique_levels)
+
+		# set axis labels
+		ax.set_xlabel('$z_1$')
+		ax.set_ylabel('$z_2$')
+
+		# set axis limits
+		ax.set_xlim([0.0, 1.0])
+		ax.set_ylim([0.0, 1.0])
+
+		# set plot header
+		ax.set_title(str(title), fontsize=14)
+
+		# set grid and tight plotting layout
+		plt.grid(True)
+		plt.tight_layout()
+
+		# save plot to plotting directory
+		plt.savefig(os.path.join(self.plot_dir, filename), dpi=300)
+
+		# close plot
+		plt.close()
+
+	def visualize_z_numeric_space_sampling_and_transactions(self, decoded_samples_and_embeddings, encoded_transactions_and_embeddings, feature, x_coord, y_coord, filename, title, levels=10):
+
+		# set plotting appearance
+		plt.style.use('seaborn')
+		plt.rcParams['figure.figsize'] = [10, 10]  # width * height
+		plt.rcParams['agg.path.chunksize'] = 1000000
+		fig, ax = plt.subplots(1, 1)
+
+		# plot sampled embeddings
+
+		# determine min and max of decoded numerical transaction feature
+		level_min = np.min(decoded_samples_and_embeddings[feature])
+		level_max = np.max(decoded_samples_and_embeddings[feature])
+
+		# create equi-distant levels
+		levels = np.linspace(level_min, level_max, levels)
+
+		# digitize decoded sampled feature values
+		decoded_samples_and_embeddings.loc[:, 'level'] = np.digitize(decoded_samples_and_embeddings[feature], levels)
+
+		# determine unique equi-distant levels of original feature value
+		unique_levels = decoded_samples_and_embeddings.groupby('level')[feature].max()
+
+		# add additional min level
+		unique_levels = pd.Series([0.0]).append(unique_levels)
+
+		# add additional max level
+		unique_levels = unique_levels.append(pd.Series([1.0]))
+
+		# determine x and y meshgrid
+		x_mesh, y_mesh = np.meshgrid(x_coord, y_coord)
+
+		# create contour plot of numerical attribute
+		im = ax.contourf(x_mesh, y_mesh, np.array(decoded_samples_and_embeddings[feature]).reshape(len(x_coord), len(y_coord)), cmap=plt.cm.coolwarm, levels=unique_levels)
+
+		# reformat colorbar
+		cbar = fig.colorbar(im, ax=ax)
+		cbar.set_ticks(unique_levels)
+
+		# plot transactional embeddings
+
+		# digitize encoded transactional feature values
+		encoded_transactions_and_embeddings.loc[:, 'level'] = np.digitize(encoded_transactions_and_embeddings.loc[:, feature], levels)
+
+		# determine feature groups
+		encoded_transactions_and_embeddings_levels = encoded_transactions_and_embeddings.groupby('level')
+
+		# iterate over numerical feature levels
+		for level_name, level in encoded_transactions_and_embeddings_levels:
+
+			# create train scatter plot
+			ax.scatter(level['x'], level['y'], marker='o', facecolors='none', edgecolors='w', label=str(level_name))
 
 		# set axis labels
 		ax.set_xlabel('$z_1$')
