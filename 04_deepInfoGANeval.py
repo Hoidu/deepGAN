@@ -289,40 +289,52 @@ filename = '01_embedded_eval_ep_{}.csv'.format(str(experiment_parameter['no_epoc
 embedded_transactions.to_csv(os.path.join(evl_dir, filename), sep=';', index=False, encoding='utf-8')
 
 # visualize latent space
+feature = 'DMBTR'
+title = 'Training Epoch {} Latent Space {} Feature Distribution $Z$'.format(str(experiment_parameter['no_epochs']), str(feature))
+file_name = '01_latent_space_ep_{}_bt_{}_ft_{}.png'.format(str(experiment_parameter['no_epochs']).zfill(4), str('eval'), str(feature))
+vha.visualize_z_space_con_feature(z_representation=embedded_transactions, feature=feature, title=title, filename=file_name, limits=False)
+
+# visualize latent space
+feature = 'WRBTR'
+title = 'Training Epoch {} Latent Space {} Feature Distribution $Z$'.format(str(experiment_parameter['no_epochs']), str(feature))
+file_name = '01_latent_space_ep_{}_bt_{}_ft_{}.png'.format(str(experiment_parameter['no_epochs']).zfill(4), str('eval'), str(feature))
+vha.visualize_z_space_con_feature(z_representation=embedded_transactions, feature=feature, title=title, filename=file_name, limits=False)
+
+# visualize latent space
 feature = 'KTOSL'
 title = 'Training Epoch {} Latent Space {} Feature Distribution $Z$'.format(str(experiment_parameter['no_epochs']), str(feature))
 file_name = '01_latent_space_ep_{}_bt_{}_ft_{}.png'.format(str(experiment_parameter['no_epochs']).zfill(4), str('eval'), str(feature))
-vha.visualize_z_space_feature(z_representation=embedded_transactions, feature=feature, title=title, filename=file_name, limits=False)
+vha.visualize_z_space_cat_feature(z_representation=embedded_transactions, feature=feature, title=title, filename=file_name, limits=False)
 
 # visualize latent space
 feature = 'WAERS'
 title = 'Training Epoch {} Latent Space {} Feature Distribution $Z$'.format(str(experiment_parameter['no_epochs']), str(feature))
 file_name = '01_latent_space_ep_{}_bt_{}_ft_{}.png'.format(str(experiment_parameter['no_epochs']).zfill(4), str('eval'), str(feature))
-vha.visualize_z_space_feature(z_representation=embedded_transactions, feature=feature, title=title, filename=file_name, limits=False)
+vha.visualize_z_space_cat_feature(z_representation=embedded_transactions, feature=feature, title=title, filename=file_name, limits=False)
 
 # visualize latent space
 feature = 'BUKRS'
 title = 'Training Epoch {} Latent Space {} Feature Distribution $Z$'.format(str(experiment_parameter['no_epochs']), str(feature))
 file_name = '01_latent_space_ep_{}_bt_{}_ft_{}.png'.format(str(experiment_parameter['no_epochs']).zfill(4), str('eval'), str(feature))
-vha.visualize_z_space_feature(z_representation=embedded_transactions, feature=feature, title=title, filename=file_name, limits=False)
+vha.visualize_z_space_cat_feature(z_representation=embedded_transactions, feature=feature, title=title, filename=file_name, limits=False)
 
 # visualize latent space
 feature = 'PRCTR'
 title = 'Training Epoch {} Latent Space {} Feature Distribution $Z$'.format(str(experiment_parameter['no_epochs']), str(feature))
 file_name = '01_latent_space_ep_{}_bt_{}_ft_{}.png'.format(str(experiment_parameter['no_epochs']).zfill(4), str('eval'), str(feature))
-vha.visualize_z_space_feature(z_representation=embedded_transactions, feature=feature, title=title, filename=file_name, limits=False)
+vha.visualize_z_space_cat_feature(z_representation=embedded_transactions, feature=feature, title=title, filename=file_name, limits=False)
 
 # visualize latent space
 feature = 'BSCHL'
 title = 'Training Epoch {} Latent Space {} Feature Distribution $Z$'.format(str(experiment_parameter['no_epochs']), str(feature))
 file_name = '01_latent_space_ep_{}_bt_{}_ft_{}.png'.format(str(experiment_parameter['no_epochs']).zfill(4), str('eval'), str(feature))
-vha.visualize_z_space_feature(z_representation=embedded_transactions, feature=feature, title=title, filename=file_name, limits=False)
+vha.visualize_z_space_cat_feature(z_representation=embedded_transactions, feature=feature, title=title, filename=file_name, limits=False)
 
 # visualize latent space
 feature = 'HKONT'
 title = 'Training Epoch {} Latent Space {} Feature Distribution $Z$'.format(str(experiment_parameter['no_epochs']), str(feature))
 file_name = '01_latent_space_ep_{}_bt_{}_ft_{}.png'.format(str(experiment_parameter['no_epochs']).zfill(4), str('eval'), str(feature))
-vha.visualize_z_space_feature(z_representation=embedded_transactions, feature=feature, title=title, filename=file_name)
+vha.visualize_z_space_cat_feature(z_representation=embedded_transactions, feature=feature, title=title, filename=file_name)
 
 # log configuration processing
 now = dt.datetime.utcnow().strftime('%Y.%m.%d-%H:%M:%S')

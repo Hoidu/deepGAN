@@ -6,6 +6,7 @@ import matplotlib as mpl
 import matplotlib.pyplot as plt
 import os as os
 import numpy as np
+from matplotlib.ticker import FuncFormatter
 
 mpl.rcParams['agg.path.chunksize'] = 1000000
 plt.rcParams['agg.path.chunksize'] = 1000000
@@ -56,7 +57,7 @@ class ChartPlots(object):
 		# close plot
 		plt.close()
 
-	def visualize_z_space_feature(self, z_representation, feature, title, filename, limits=True):
+	def visualize_z_space_cat_feature(self, z_representation, feature, title, filename, limits=True):
 
 		# set plotting appearance
 		plt.style.use('seaborn')
@@ -65,13 +66,13 @@ class ChartPlots(object):
 		fig, ax = plt.subplots(1, 1)
 
 		# determine feature groups
-		groups = z_representation.groupby(feature)
+		feature_values = z_representation.groupby(feature)
 
 		# iterate over feature groups
-		for name, group in groups:
+		for feature_name, feature_value in feature_values:
 
-			# create train scatter plot
-			ax.scatter(group.x, group.y, marker='o', edgecolors='w', label=str(name))
+			# create feature_value scatter plot
+			ax.scatter(feature_value['x'], feature_value['y'], marker='o', edgecolors='w', label=str(feature_name))
 
 		# set axis labels
 		ax.set_xlabel('$z_1$')
@@ -89,6 +90,47 @@ class ChartPlots(object):
 
 		# add legend to plot
 		ax.legend(loc='upper left')
+
+		# set grid and tight plotting layout
+		plt.grid(True)
+		plt.tight_layout()
+
+		# save plot to plotting directory
+		plt.savefig(os.path.join(self.plot_dir, filename), dpi=300)
+
+		# close plot
+		plt.close()
+
+	def visualize_z_space_con_feature(self, z_representation, feature, title, filename, limits=True):
+
+		# set plotting appearance
+		plt.style.use('seaborn')
+		plt.rcParams['figure.figsize'] = [10, 10]  # width * height
+		plt.rcParams['agg.path.chunksize'] = 1000000
+		fig, ax = plt.subplots(1, 1)
+
+		# create feature value scatter plot
+		scatter = ax.scatter(z_representation['x'], z_representation['y'], c=z_representation[feature], marker='o', edgecolors='w', cmap=plt.cm.coolwarm)
+
+		# set axis labels
+		ax.set_xlabel('$z_1$')
+		ax.set_ylabel('$z_2$')
+
+		# case: x and y limits are true
+		if limits is True:
+
+			# set axis limits
+			ax.set_xlim([0.0, 1.0])
+			ax.set_ylim([0.0, 1.0])
+
+		# set plot header
+		ax.set_title(str(title), fontsize=14)
+
+		# add colorbar to plot
+		fmt = comma_fmt = FuncFormatter(lambda x, p: format(int(x), ',')) # '${x:,.0f}' #'%1.2f'
+		cbar = fig.colorbar(scatter, ax=ax, format=fmt)
+		#cbar.set_ticks(feature_encodings['Z'].unique())
+		#cbar.set_ticklabels(feature_encodings['MAX_FEATURE'].unique())
 
 		# set grid and tight plotting layout
 		plt.grid(True)
