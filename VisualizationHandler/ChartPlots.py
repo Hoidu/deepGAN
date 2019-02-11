@@ -35,7 +35,7 @@ class ChartPlots(object):
 		fig, ax = plt.subplots(1, 1)
 
 		# create train scatter plot
-		ax.scatter(z_representation.x, z_representation.y, color=color, marker='o', edgecolors='w')
+		ax.scatter(z_representation['x'], z_representation['y'], color=color, marker='o', edgecolors='w')
 
 		# set axis limits
 		#ax.set_xlim([0.0, 1.0])

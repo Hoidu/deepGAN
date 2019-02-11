@@ -31,7 +31,6 @@ from NetworksHandler import EncoderLinear
 from NetworksHandler import EncoderSigmoid
 from NetworksHandler import EncoderReLU
 from NetworksHandler import Decoder
-from NetworksHandler import Discriminator
 from VisualizationHandler import ChartPlots
 
 # init utilities handler
@@ -46,10 +45,10 @@ vha = ChartPlots.ChartPlots(plot_dir='./')
 parser = ap.ArgumentParser()
 
 parser.add_argument('--exp_timestamp', help='', nargs='?', type=str, default=dt.datetime.utcnow().strftime('%Y-%m-%d_%H-%M-%S'))
-parser.add_argument('--experiment_dir', help='', nargs='?', type=str, default='./01_experiments/2019-02-07_16-19-30_deepGAN_exp_sd_1234_ep_400_gs_8_rd_0.8_sd_0.03_mb_128_eco_linear_gpu_False')
+parser.add_argument('--experiment_dir', help='', nargs='?', type=str, default='./01_experiments/2019-02-10_22-01-15_deepGAN_exp_sd_1234_ep_400_gs_8_rd_0.8_sd_0.03_mb_128_eco_linear_gpu_False')
 parser.add_argument('--target_feature', help='', nargs='?', type=str, default='BUKRS')
 parser.add_argument('--seed', help='', nargs='?', type=int, default=1234)
-parser.add_argument('--no_epochs', help='', nargs='?', type=int, default=100)
+parser.add_argument('--no_epochs', help='', nargs='?', type=int, default=399)
 parser.add_argument('--eval_epochs', help='', nargs='?', type=int, default=50)
 parser.add_argument('--enc_output', help='', nargs='?', type=str, default='relu')
 parser.add_argument('--eval_latent_epochs', help='', nargs='?', type=int, default=500)
@@ -292,8 +291,6 @@ df_encoded_transactions_and_embeddings.to_csv(os.path.join(evl_dir, filename), s
 # visualize latent space feature distribution (transactions)
 ########################################################################################################################
 
-'''
-
 # visualize latent space
 feature = 'DMBTR'
 title = 'Training Epoch {} Latent Space {} Feature Distribution $Z$'.format(str(experiment_parameter['no_epochs']), str(feature))
@@ -345,8 +342,6 @@ vha.visualize_z_space_cat_feature(z_representation=df_encoded_transactions_and_e
 # log configuration processing
 now = dt.datetime.utcnow().strftime('%Y.%m.%d-%H:%M:%S')
 print('[INFO {}] DeepGAN:: Completed latent space feature distribution plots of data samples.'.format(now))
-
-'''
 
 ########################################################################################################################
 # visualize latent space categorical feature distribution (entire space)

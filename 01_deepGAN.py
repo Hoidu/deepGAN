@@ -223,9 +223,14 @@ z_stdv = experiment_parameter['stdv_gauss']
 # determine latent space target data
 z_target = uha.get_target_distribution(mu=z_mean, sigma=z_stdv, n=transactions.shape[0], dim=2)
 
+# convert to pandas data frame
+cols = ['x', 'y']
+df_z_target = pd.DataFrame(z_target, columns=cols)
+
 # visualize target distribution
-title = 'Target Latent Space Distribtion $Z$'
-vha.visualize_z_space(z_representation=z_target, title=title, filename='00_latent_space_target.png', color='C0')
+title = 'Gaussian All Target Latent Space Distribution $Z$'
+file_name = '00_latent_space_target_gauss_all.png'
+vha.visualize_z_space(z_representation=df_z_target, title=title, filename=file_name, color='C0')
 
 # convert target distribution to torch tensor
 z_target = torch.FloatTensor(z_target)
@@ -373,8 +378,8 @@ for epoch in range(experiment_parameter['no_epochs']):
 		rec_batch = decoder(z)
 
 		# categorical numeric split
-		batch_cat, batch_num = split_2_dummy_numeric(batch, encoded_cat_transactions.shape[1])
-		rec_batch_cat, rec_batch_num = split_2_dummy_numeric(rec_batch, encoded_cat_transactions.shape[1])
+		batch_cat, batch_num = uha.split_2_dummy_numeric(batch, encoded_cat_transactions.shape[1])
+		rec_batch_cat, rec_batch_num = uha.split_2_dummy_numeric(rec_batch, encoded_cat_transactions.shape[1])
 
 		# backward pass + gradients update
 		rec_error_cat = reconstruction_criterion_categorical(input=rec_batch_cat, target=batch_cat)  # one-hot attr error
